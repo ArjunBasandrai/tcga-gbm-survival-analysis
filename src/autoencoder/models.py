@@ -38,14 +38,12 @@ class MutationAE(nn.Module):
         self.embedding = nn.Embedding(input_size, 2048)
         
         self.encoder = nn.Sequential(
-            nn.Linear(2048, 1024),
+            nn.Linear(2048, 768),
             nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(1024, 512),
+            nn.Linear(768, 384),
             nn.ReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(384, 256),
             nn.ReLU(),
-
             nn.Linear(256, latent_dim)
         )
 

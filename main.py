@@ -13,7 +13,7 @@ from src.autoencoder.training.training import setup, train_autoencoder, cv_clini
 from src.autoencoder.encoding import encode_clinical_data, encode_mutations_data
 from src.autoencoder.chi2 import chi2_test
 
-from src.pathways.pathways import get_enriched_pathways
+from src.pathways.pathways import get_enriched_pathways, find_top_pathways
 
 from src.config import Conf
 
@@ -22,7 +22,7 @@ def train_clinical_autoencoder(device, model, optimizer, loss_fn, scheduler, ear
     train_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, 
                       clinical_train_loader, clinical_val_loader, plot_path="results/clinical/loss.png")
 
-    # cv_clinical_autoencoder(device, loss_fn, early_stopping, clinical_dataset_all, input_size)
+    cv_clinical_autoencoder(device, loss_fn, early_stopping, clinical_dataset_all, input_size)
 
     encoded_clinical_df = encode_clinical_data(model, device, clinical_df)
     encoded_clinical_df.to_csv("processed/EncodedClinical.csv")
@@ -33,7 +33,7 @@ def train_mutation_autoencoder(device, model, optimizer, loss_fn, scheduler, ear
     train_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, 
                       mutation_train_loader, mutation_val_loader, plot_path="results/mutation/loss.png")
 
-    # cv_mutation_autoencoder(device, loss_fn, early_stopping, mutation_dataset_all, input_size)
+    cv_mutation_autoencoder(device, loss_fn, early_stopping, mutation_dataset_all, input_size)
 
     encoded_mutations_data = encode_mutations_data(model, device, mutation_df)
 
@@ -65,6 +65,7 @@ def enrich_pathways(clinical_df, mutation_df):
         how="inner"
     )
     pathways_df.to_csv("processed/Pathways.csv")
+    find_top_pathways(pathways_df, clinical_df)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Autoencoder")

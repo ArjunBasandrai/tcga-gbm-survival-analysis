@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from ..config import Conf
 
 def _get_latent_mutation_df(clinical_df):
-    latent_mutation_df = pd.read_csv("data/EncodedMutation.csv")
+    latent_mutation_df = pd.read_csv("processed/EncodedMutation.csv")
     latent_columns = latent_mutation_df.columns[-Conf.latent_dim:].to_list()
     latent_mutation_df = latent_mutation_df[latent_columns +  ['patient_id']]
 
@@ -42,7 +42,7 @@ def _kmeans_cluster_latent(clinical_df):
 
     return latent_mutation_df
 
-def chi2_test(clinical_df, plot_path):
+def chi2_test(clinical_df, mutation_df, plot_path):
     latent_mutation_df = _kmeans_cluster_latent(clinical_df)
 
     contingency_table = pd.crosstab(latent_mutation_df['cluster'], latent_mutation_df['survival_bin'])
@@ -58,6 +58,10 @@ def chi2_test(clinical_df, plot_path):
     plt.show()
 
     chi2, p, _, _ = chi2_contingency(contingency_table)
-    print(f"Chi-Square: {chi2:.2f}, p-value: {p}")
+    print(f"Chi-Square Statistic: {chi2:.2f}, p-value: {p}")
 
-    print(latent_mutation_df.query("cluster == 2"))
+    if p < 0.05:
+        mutation_df = mutation_df.merge(latent_mutation_df[['patient_id', 'cluster']], on='patient_id', how='inner')
+        mutation_df.to_csv("processed/MutationClustered.csv", index=False)
+    else:
+        print("No significant difference between clusters and survival")

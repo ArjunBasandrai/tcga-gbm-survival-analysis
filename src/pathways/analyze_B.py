@@ -83,10 +83,8 @@ def find_top_genes(mutation_df, pathway_B_genes):
 
     top_pathway_genes = cph.summary.query("p < 0.05").index.to_list()
 
-    print("Keeping only unique rows")
-    cox_data = cox_data.drop_duplicates(subset=top_pathway_genes).reset_index(drop=True)
-
     print("Calculating C-index...")
+    cox_data = cox_data.drop_duplicates(subset=top_pathway_genes).reset_index(drop=True)
     c_index = concordance_index(cox_data['overall_survival'], 
                             -cph.predict_partial_hazard(cox_data), 
                             cox_data['status'])
@@ -110,10 +108,30 @@ def find_top_genes(mutation_df, pathway_B_genes):
 
     top_genes = cph.summary.query("p < 0.05").index.to_list()
 
-    print("Keeping only unique rows")
+    print("Calculating C-index...")
     cox_data = cox_data.drop_duplicates(subset=top_genes).reset_index(drop=True)
+    c_index = concordance_index(cox_data['overall_survival'], 
+                            -cph.predict_partial_hazard(cox_data), 
+                            cox_data['status'])
+    print(f"C-index: {c_index:.4f}")
+
+    print("\nTop pathway B genes affecting overall survival:")
+    for gene in top_genes:
+        print(f"{gene}", end=" ")
+    print("\n")
+    
+    cox_data = mutation_df.copy()
+    cox_data = cox_data[top_genes + ["overall_survival", "status"]]
+
+    print("Training final Cox Proportional Hazards model...")
+    cph = CoxPHFitter(penalizer=0.01)
+    cph.fit(cox_data, duration_col="overall_survival", event_col="status")
+    print("Finished training")
+
+    cph.check_assumptions(cox_data, p_value_threshold=0.05)
 
     print("Calculating C-index...")
+    cox_data = cox_data.drop_duplicates(subset=top_genes).reset_index(drop=True)
     c_index = concordance_index(cox_data['overall_survival'], 
                             -cph.predict_partial_hazard(cox_data), 
                             cox_data['status'])
@@ -122,7 +140,4 @@ def find_top_genes(mutation_df, pathway_B_genes):
     with open('models/cox_model.pkl', 'wb') as f:
         pkl.dump(cph, f)
 
-    print("\nTop pathway B genes affecting overall survival:")
-    for gene in top_genes:
-        print(f"{gene}", end=" ")
     return top_genes

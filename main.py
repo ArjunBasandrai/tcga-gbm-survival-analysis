@@ -18,6 +18,8 @@ from src.pathways.pathways import get_enriched_pathways, find_top_pathways
 from src.pathways.analyze_pathways import compare_pathways, analyze_pathway_a_b
 from src.pathways.analyze_B import check_pten, find_top_genes
 
+from src.inference.cox_pathway_b import predict_patient_survival
+
 from src.config import Conf
 
 def train_clinical_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, 
@@ -123,7 +125,6 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
         top_genes_df = pd.DataFrame(top_genes, columns=['Top Genes'])
         top_genes_df.to_csv(save_path, index=False)
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Autoencoder")
     parser.add_argument("--clinical", action="store_true", help="Run Clinical Autoencoder")
@@ -131,7 +132,12 @@ if __name__ == "__main__":
     parser.add_argument("--chi2", action="store_true", help="Run Chi2 Test")
     parser.add_argument("--pathways", action="store_true", help="Get enriched pathways")
     parser.add_argument("--pathways_genes", action="store_true", help="Get important genes from pathway B")
+    parser.add_argument("--predict", action="store_true", help="Predict patient survival")
     args = parser.parse_args()
+
+    if args.predict:
+        predict_patient_survival()
+        exit(0)
 
     clinical_df, encoder = load_clinical_data("data/Clinical.csv")
     mutation_df = load_mutation_data("data/Mutation.csv")

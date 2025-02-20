@@ -91,10 +91,10 @@ def enrich_pathways(clinical_df, mutation_df):
         pathway_B_genes_2 = enriched_pathways[2].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
         pathway_B_genes = list(set(pathway_B_genes_0 + pathway_B_genes_2))
 
-        os.makedirs("results/pathways/pathways_A", exist_ok=True)
-        os.makedirs("results/pathways/pathways_B", exist_ok=True)
-        pkl.dump(pathway_A_genes, open("results/pathways/pathways_A/pathway_A_genes.pkl", "wb"))
-        pkl.dump(pathway_B_genes, open("results/pathways/pathways_B/pathway_B_genes.pkl", "wb"))
+        os.makedirs("results/pathways/pathway_A", exist_ok=True)
+        os.makedirs("results/pathways/pathway_B", exist_ok=True)
+        pkl.dump(pathway_A_genes, open("results/pathways/pathway_A/pathway_A_genes.pkl", "wb"))
+        pkl.dump(pathway_B_genes, open("results/pathways/pathway_B/pathway_B_genes.pkl", "wb"))
 
         analyze_pathway_a_b(clinical_df, pathway_A, pathway_B)
 
@@ -111,7 +111,7 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
     mutation_df['status'] = mutation_df['status'].astype(int)
     mutation_df = mutation_df.drop(columns=['patient_id'])
 
-    pathway_B_genes = pkl.load(open("results/pathways/pathways_B/pathway_B_genes.pkl", "rb"))
+    pathway_B_genes = pkl.load(open("results/pathways/pathway_B/pathway_B_genes.pkl", "rb"))
 
     no_pten_verification = check_pten(mutation_df, pathway_B_genes)
     if no_pten_verification:
@@ -119,7 +119,7 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
         print("Finding top genes in Pathway B...")
 
         top_genes = find_top_genes(mutation_df, pathway_B_genes)
-        save_path = "results/pathways/pathways_B/pathways_B_genes.csv"
+        save_path = "results/pathways/pathway_B/pathways_B_genes.csv"
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
         top_genes_df = pd.DataFrame(top_genes, columns=['Top Genes'])

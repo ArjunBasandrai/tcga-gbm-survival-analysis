@@ -14,6 +14,7 @@ from src.autoencoder.encoding import encode_clinical_data, encode_mutations_data
 from src.autoencoder.chi2 import chi2_test
 
 from src.pathways.pathways import get_enriched_pathways, find_top_pathways
+from src.pathways.analyze_pathways import compare_pathways, analyze_pathway_a_b
 
 from src.config import Conf
 
@@ -46,26 +47,47 @@ def run_chi2_test(clinical_df, mutation_df):
     chi2_test(clinical_df, mutation_df, "results/chi2/cluster_vs_survival.png")
 
 def enrich_pathways(clinical_df, mutation_df):
+    cox_results = "results/pathways/top_pathways.csv"
+
     if os.path.exists("processed/MutationClustered.csv") is False:
         raise ValueError("Please run the chi2 test first")
     
-    clustered_mutation_df = pd.read_csv("processed/MutationClustered.csv")
-    enriched_pathways = get_enriched_pathways(clustered_mutation_df)
-    pathways_df = pd.DataFrame(mutation_df['patient_id']).copy()
-    for enriched_pathway in enriched_pathways:
-        terms = enriched_pathway['Term']
-        genes = enriched_pathway['Genes']
-        for term, gene in zip(terms, genes):
-            if term not in pathways_df.columns:
-                pathway_mutations = mutation_df[gene.split(";")].sum(axis=1)
-                pathways_df[term] = pathway_mutations
-    pathways_df = pathways_df.merge(
-        clinical_df[['patient_id', 'overall_survival']],
-        on="patient_id",
-        how="inner"
-    )
-    pathways_df.to_csv("processed/Pathways.csv")
-    find_top_pathways(pathways_df, clinical_df)
+    if os.path.exists("processed/Pathways.csv") is False:
+        print("Getting enriched pathways...")
+        clustered_mutation_df = pd.read_csv("processed/MutationClustered.csv")
+        enriched_pathways = get_enriched_pathways(clustered_mutation_df)
+        pathways_df = pd.DataFrame(mutation_df['patient_id']).copy()
+        for enriched_pathway in enriched_pathways:
+            terms = enriched_pathway['Term']
+            genes = enriched_pathway['Genes']
+            for term, gene in zip(terms, genes):
+                if term not in pathways_df.columns:
+                    pathway_mutations = mutation_df[gene.split(";")].sum(axis=1)
+                    pathways_df[term] = pathway_mutations
+        pathways_df = pathways_df.merge(
+            clinical_df[['patient_id', 'overall_survival']],
+            on="patient_id",
+            how="inner"
+        )
+        pathways_df.to_csv("processed/Pathways.csv")
+    elif os.path.exists("results/pathways/top_pathways.csv") is False:
+        print("Finding top pathways...")
+        plot_path = "results/pathways/coxph.png"
+        pathways_df = pd.read_csv("processed/Pathways.csv")
+        find_top_pathways(pathways_df, clinical_df, plot_path=plot_path, cox_results=cox_results)
+    else:
+        print("Comparing pathways...")
+        clustered_mutation_df = pd.read_csv("processed/MutationClustered.csv")
+        important_pathways, enriched_pathways = compare_pathways(clustered_mutation_df, pd.read_csv(cox_results)['covariate'].to_list())
+
+        pathway_B, pathway_A = important_pathways
+
+        pathway_A_genes = enriched_pathways[0].query(f"Term == '{pathway_A}'")['Genes'].item().split(";")
+        pathway_B_genes_0 = enriched_pathways[0].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
+        pathway_B_genes_2 = enriched_pathways[2].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
+        pathway_B_genes = list(set(pathway_B_genes_0 + pathway_B_genes_2))
+
+        analyze_pathway_a_b(clinical_df, pathway_A, pathway_B)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Autoencoder")

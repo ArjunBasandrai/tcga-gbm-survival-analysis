@@ -3,10 +3,10 @@ from torch import nn, optim
 
 import os
 
-from ...config import Conf
-from ..models import ClinicalAE, MutationAE
-from ..trainers import train_model, validate_model, plot_losses
-from ..cv import k_fold_autoencoder_training
+from ..config import Conf
+from .models import ClinicalAE, MutationAE
+from .trainers import train_model, validate_model, plot_losses
+from .cv import k_fold_autoencoder_training
 
 class EarlyStopping:
     def __init__(self, patience=10, min_delta=0.001, path="best_model.pth"):

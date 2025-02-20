@@ -1,5 +1,6 @@
 import os
 import argparse
+import pickle as pkl
 
 os.environ['PROJECT_SEED'] = str(1834579290)
 
@@ -15,6 +16,7 @@ from src.autoencoder.chi2 import chi2_test
 
 from src.pathways.pathways import get_enriched_pathways, find_top_pathways
 from src.pathways.analyze_pathways import compare_pathways, analyze_pathway_a_b
+from src.pathways.analyze_B import check_pten, find_top_genes
 
 from src.config import Conf
 
@@ -87,7 +89,30 @@ def enrich_pathways(clinical_df, mutation_df):
         pathway_B_genes_2 = enriched_pathways[2].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
         pathway_B_genes = list(set(pathway_B_genes_0 + pathway_B_genes_2))
 
+        pkl.dump(pathway_B_genes, open("results/pathways/pathway_B_genes.pkl", "wb"))
+
         analyze_pathway_a_b(clinical_df, pathway_A, pathway_B)
+
+def get_important_genes_from_pathway_B(mutation_df, clinical_df):
+    import warnings
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+
+    mutation_df = mutation_df.merge(
+        clinical_df[['patient_id', 'status', 'overall_survival']],
+        on="patient_id",
+        how="inner"
+    )
+    mutation_df['overall_survival'] = mutation_df['overall_survival'].astype(int)
+    mutation_df['status'] = mutation_df['status'].astype(int)
+    mutation_df = mutation_df.drop(columns=['patient_id'])
+
+    pathway_B_genes = pkl.load(open("results/pathways/pathway_B_genes.pkl", "rb"))
+
+    no_pten_verification = check_pten(mutation_df, pathway_B_genes)
+    if no_pten_verification:
+        print("Genes in Pathway B excluding PTEN are associated with survival")
+        print("Finding top genes in Pathway B...")
+        top_genes = find_top_genes(mutation_df, pathway_B_genes)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Autoencoder")
@@ -95,6 +120,7 @@ if __name__ == "__main__":
     parser.add_argument("--mutation", action="store_true", help="Run Mutation Autoencoder")
     parser.add_argument("--chi2", action="store_true", help="Run Chi2 Test")
     parser.add_argument("--pathways", action="store_true", help="Get enriched pathways")
+    parser.add_argument("--pathways_genes", action="store_true", help="Get important genes from pathway B")
     args = parser.parse_args()
 
     clinical_df, encoder = load_clinical_data("data/Clinical.csv")
@@ -124,3 +150,6 @@ if __name__ == "__main__":
 
     if args.pathways:
         enrich_pathways(clinical_df, mutation_df)
+
+    if args.pathways_genes:
+        get_important_genes_from_pathway_B(mutation_df, clinical_df)

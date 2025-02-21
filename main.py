@@ -21,6 +21,8 @@ from src.genes.mutation.pathways.analyze_B import check_pten, find_top_genes
 
 from src.genes.mutation.inference.cox_pathway_b import predict_patient_survival
 
+from src.genes.expression.dge import install_R_packages, perform_dge_analysis
+
 from src.config import Conf
 
 def train_clinical_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, 
@@ -128,20 +130,22 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
         top_genes_df.to_csv(save_path, index=False)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run Autoencoder")
+    parser = argparse.ArgumentParser(description="Run Survival Analysis on TCGA-GBM Dataset")
     parser.add_argument("--clinical", action="store_true", help="Run Clinical Autoencoder")
 
-    # gene mutation analysis
+    # Gene mutation analysis
     parser.add_argument("--mutation", action="store_true", help="Run Mutation Autoencoder")
     parser.add_argument("--chi2", action="store_true", help="Run Chi2 Test")
     parser.add_argument("--pathways", action="store_true", help="Get enriched pathways")
-    parser.add_argument("--pathways_genes", action="store_true", help="Get important genes from pathway B")
+    parser.add_argument("--pathways-genes", action="store_true", help="Get important genes from pathway B")
     parser.add_argument("--predict", action="store_true", help="Predict patient survival")
-    parser.add_argument("--full_mutation", action="store_true", help="Run the full mutation analysis")
+    parser.add_argument("--full-mutation", action="store_true", help="Run the full mutation analysis")
 
-    # gene expression analysis
+    # Gene expression analysis
     parser.add_argument("--preprocess", action="store_true", help="Preprocess gene expression data")
+    parser.add_argument("--install-r-packages", action="store_true", help="Install required R packages")
     parser.add_argument("--dge", action="store_true", help="Run Differential Gene Expression Analysis")
+    parser.add_argument("--full-expression-expression", action="store_true", help="Run the full gene expression analysis")
     
     args = parser.parse_args()
 
@@ -149,17 +153,19 @@ if __name__ == "__main__":
         predict_patient_survival()
         exit(0)
     
-    is_mutation_analysis = args.mutation or args.chi2 or args.pathways or args.pathways_genes or args.full_mutation
+    is_gene_mutation_analysis = args.mutation or args.chi2 or args.pathways or args.pathways_genes or args.full_mutation
+    is_gene_expression_analysis = args.preprocess or args.dge or args.install_r_packages or args.full_expression_expression
 
     patients_to_remove = ['TCGA.DU.6392', 'TCGA.HT.8564']
     clinical_df, encoder = load_clinical_data("data/Clinical.csv")
 
     clinical_df = clinical_df[~clinical_df.patient_id.isin(patients_to_remove)]
 
-    rna_df = load_rna_data("data/RNASeq.csv")
-    rna_df = rna_df[~rna_df.patient_id.isin(patients_to_remove)]
+    if is_gene_expression_analysis:
+        rna_df = load_rna_data("data/RNASeq2.csv")
+        rna_df = rna_df[~rna_df.patient_id.isin(patients_to_remove)]
 
-    if is_mutation_analysis:
+    if is_gene_mutation_analysis:
         mutation_df = load_mutation_data("data/Mutation.csv")
         mutation_df = mutation_df[~mutation_df.patient_id.isin(patients_to_remove)]
 
@@ -187,21 +193,11 @@ if __name__ == "__main__":
     if args.pathways_genes or args.full_mutation:
         get_important_genes_from_pathway_B(mutation_df, clinical_df)
     
-    if args.preprocess:
+    if args.preprocess or args.full_expression_expression:
         append_survival_data(rna_df, clinical_df)
     
-    if args.dge:
-        import subprocess
+    if args.install_r_packages or args.dge or args.full_expression_expression:
+        install_R_packages()
 
-        r_script = "src/R/limma_voom/limma_voom.R"
-        input_csv = "processed/GeneExpressionData.csv"
-        output_csv = "results/genes/expression/limma_voom/limma_voom_results.csv"
-        plot_path = "results/genes/expression/limma_voom/mean_variance_trend.pdf"
-
-        cmd = ["Rscript", r_script, input_csv, output_csv, plot_path]
-
-        try:
-            subprocess.run(cmd, check=True)
-            print(f"R script executed successfully! Results saved to {output_csv}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error running R script: {e}")
+    if args.dge or args.full_expression_expression:
+        perform_dge_analysis()

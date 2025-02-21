@@ -8,6 +8,7 @@ import pandas as pd
 
 from src.dataset.clinical import load_clinical_data
 from src.dataset.mutation import load_mutation_data
+from src.dataset.rnaseq import load_rna_data, append_survival_data
 
 from src.genes.mutation.autoencoder.datasets import get_dataloaders
 from src.genes.mutation.autoencoder.training import setup, train_autoencoder, cv_clinical_autoencoder, cv_mutation_autoencoder
@@ -136,40 +137,71 @@ if __name__ == "__main__":
     parser.add_argument("--pathways", action="store_true", help="Get enriched pathways")
     parser.add_argument("--pathways_genes", action="store_true", help="Get important genes from pathway B")
     parser.add_argument("--predict", action="store_true", help="Predict patient survival")
+    parser.add_argument("--full_mutation", action="store_true", help="Run the full mutation analysis")
+
+    # gene expression analysis
+    parser.add_argument("--preprocess", action="store_true", help="Preprocess gene expression data")
+    parser.add_argument("--dge", action="store_true", help="Run Differential Gene Expression Analysis")
     
     args = parser.parse_args()
 
     if args.predict:
         predict_patient_survival()
         exit(0)
-
-    clinical_df, encoder = load_clinical_data("data/Clinical.csv")
-    mutation_df = load_mutation_data("data/Mutation.csv")
+    
+    is_mutation_analysis = args.mutation or args.chi2 or args.pathways or args.pathways_genes or args.full_mutation
 
     patients_to_remove = ['TCGA.DU.6392', 'TCGA.HT.8564']
+    clinical_df, encoder = load_clinical_data("data/Clinical.csv")
+
     clinical_df = clinical_df[~clinical_df.patient_id.isin(patients_to_remove)]
-    mutation_df = mutation_df[~mutation_df.patient_id.isin(patients_to_remove)]
 
-    clinical_train_loader, clinical_val_loader, mutation_train_loader, mutation_val_loader, \
-    clinical_dataset_all, mutation_dataset_all = get_dataloaders(clinical_df, mutation_df, batch_size=Conf.batch_size)
+    rna_df = load_rna_data("data/RNASeq.csv")
+    rna_df = rna_df[~rna_df.patient_id.isin(patients_to_remove)]
 
-    device, models, optimizers, schedulers, loss_fns, early_stoppings = setup(clinical_df, mutation_df)
+    if is_mutation_analysis:
+        mutation_df = load_mutation_data("data/Mutation.csv")
+        mutation_df = mutation_df[~mutation_df.patient_id.isin(patients_to_remove)]
 
-    if args.clinical:
+        clinical_train_loader, clinical_val_loader, mutation_train_loader, mutation_val_loader, \
+        clinical_dataset_all, mutation_dataset_all = get_dataloaders(clinical_df, mutation_df, batch_size=Conf.batch_size)
+
+        device, models, optimizers, schedulers, loss_fns, early_stoppings = setup(clinical_df, mutation_df)
+
+    if args.clinical or args.full_mutation:
         train_clinical_autoencoder(device, models[0], optimizers[0], loss_fns[0], schedulers[0], early_stoppings[0],
                                    clinical_train_loader, clinical_val_loader, clinical_dataset_all, 
                                    clinical_df.shape[1] - 2)
 
-    if args.mutation:
+    if args.mutation or args.full_mutation:
         train_mutation_autoencoder(device, models[1], optimizers[1], loss_fns[1], schedulers[1], early_stoppings[1],
                                    mutation_train_loader, mutation_val_loader, mutation_dataset_all, 
                                    mutation_df.shape[1] - 1)
 
-    if args.chi2:
+    if args.chi2 or args.full_mutation:
         run_chi2_test(clinical_df, mutation_df)
 
-    if args.pathways:
+    if args.pathways or args.full_mutation:
         enrich_pathways(clinical_df, mutation_df)
 
-    if args.pathways_genes:
+    if args.pathways_genes or args.full_mutation:
         get_important_genes_from_pathway_B(mutation_df, clinical_df)
+    
+    if args.preprocess:
+        append_survival_data(rna_df, clinical_df)
+    
+    if args.dge:
+        import subprocess
+
+        r_script = "src/R/limma_voom/limma_voom.R"
+        input_csv = "processed/GeneExpressionData.csv"
+        output_csv = "results/genes/expression/limma_voom/limma_voom_results.csv"
+        plot_path = "results/genes/expression/limma_voom/mean_variance_trend.pdf"
+
+        cmd = ["Rscript", r_script, input_csv, output_csv, plot_path]
+
+        try:
+            subprocess.run(cmd, check=True)
+            print(f"R script executed successfully! Results saved to {output_csv}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error running R script: {e}")

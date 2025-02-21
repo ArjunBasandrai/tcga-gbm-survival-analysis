@@ -3,7 +3,7 @@ from torch import nn, optim
 
 import os
 
-from ..config import Conf
+from ....config import Conf
 from .models import ClinicalAE, MutationAE
 from .trainers import train_model, validate_model, plot_losses
 from .cv import k_fold_autoencoder_training
@@ -61,7 +61,7 @@ def setup(clinical_df, mutation_df):
 
     return device, models, optimizers, schedulers, loss_fns, early_stoppings
 
-def train_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, train_loader, val_loader, plot_path="results/loss.png"):
+def train_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, train_loader, val_loader, plot_path="results/genes/mutation/loss.png"):
     train_loss_history = []
     val_loss_history = []
 
@@ -129,7 +129,7 @@ def cv_mutation_autoencoder(device, loss_fn, early_stopping, dataset, input_size
         loss_fn=loss_fn,
         lr=Conf.mutation_lr,
         weight_decay=Conf.mutation_weight_decay,
-        training_graph_path="results/mutation/cv/mutation_autoencoder_cv",
+        training_graph_path="results/genes/mutation/mutation/cv/mutation_autoencoder_cv",
         latent_dim=Conf.latent_dim,
         input_size=input_size,
         n_splits=5,

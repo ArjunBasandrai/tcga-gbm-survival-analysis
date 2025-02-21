@@ -78,7 +78,7 @@ def km_analysis(pathways_df, pathway_A, pathway_B):
     kmf_a_b.plot(ax=ax)
     kmf_neither.plot(ax=ax)
     plt.title('Kaplan-Meier Curves for Pathway A, Pathway B')
-    plt.savefig("results/pathways/pathway_A_B_km_curves.png")
+    plt.savefig("results/genes/mutation/pathways/pathway_A_B_km_curves.png")
     plt.show()
 
     res_a_neither = logrank_test(

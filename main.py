@@ -9,16 +9,16 @@ import pandas as pd
 from src.dataset.clinical import load_clinical_data
 from src.dataset.mutation import load_mutation_data
 
-from src.autoencoder.datasets import get_dataloaders
-from src.autoencoder.training import setup, train_autoencoder, cv_clinical_autoencoder, cv_mutation_autoencoder
-from src.autoencoder.encoding import encode_clinical_data, encode_mutations_data
-from src.autoencoder.chi2 import chi2_test
+from src.genes.mutation.autoencoder.datasets import get_dataloaders
+from src.genes.mutation.autoencoder.training import setup, train_autoencoder, cv_clinical_autoencoder, cv_mutation_autoencoder
+from src.genes.mutation.autoencoder.encoding import encode_clinical_data, encode_mutations_data
+from src.genes.mutation.autoencoder.chi2 import chi2_test
 
-from src.pathways.pathways import get_enriched_pathways, find_top_pathways
-from src.pathways.analyze_pathways import compare_pathways, analyze_pathway_a_b
-from src.pathways.analyze_B import check_pten, find_top_genes
+from src.genes.mutation.pathways.pathways import get_enriched_pathways, find_top_pathways
+from src.genes.mutation.pathways.analyze_pathways import compare_pathways, analyze_pathway_a_b
+from src.genes.mutation.pathways.analyze_B import check_pten, find_top_genes
 
-from src.inference.cox_pathway_b import predict_patient_survival
+from src.genes.mutation.inference.cox_pathway_b import predict_patient_survival
 
 from src.config import Conf
 
@@ -36,7 +36,7 @@ def train_clinical_autoencoder(device, model, optimizer, loss_fn, scheduler, ear
 def train_mutation_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, 
                                mutation_train_loader, mutation_val_loader, mutation_dataset_all, input_size):
     train_autoencoder(device, model, optimizer, loss_fn, scheduler, early_stopping, 
-                      mutation_train_loader, mutation_val_loader, plot_path="results/mutation/loss.png")
+                      mutation_train_loader, mutation_val_loader, plot_path="results/genes/mutation/mutation/loss.png")
 
     cv_mutation_autoencoder(device, loss_fn, early_stopping, mutation_dataset_all, input_size)
 
@@ -48,10 +48,10 @@ def run_chi2_test(clinical_df, mutation_df):
     if os.path.exists("processed/EncodedMutation.csv") is False:
         raise ValueError("Please run mutation autoencoder first")
 
-    chi2_test(clinical_df, mutation_df, "results/chi2/cluster_vs_survival.png")
+    chi2_test(clinical_df, mutation_df, "results/genes/mutation/chi2/cluster_vs_survival.png")
 
 def enrich_pathways(clinical_df, mutation_df):
-    cox_results = "results/pathways/top_pathways.csv"
+    cox_results = "results/genes/mutation/pathways/top_pathways.csv"
 
     if os.path.exists("processed/MutationClustered.csv") is False:
         raise ValueError("Please run the chi2 test first")
@@ -74,29 +74,30 @@ def enrich_pathways(clinical_df, mutation_df):
             how="inner"
         )
         pathways_df.to_csv("processed/Pathways.csv")
-    elif os.path.exists("results/pathways/top_pathways.csv") is False:
+        
+    if os.path.exists("results/genes/mutation/pathways/top_pathways.csv") is False:
         print("Finding top pathways...")
-        plot_path = "results/pathways/coxph.png"
+        plot_path = "results/genes/mutation/pathways/coxph.png"
         pathways_df = pd.read_csv("processed/Pathways.csv")
         find_top_pathways(pathways_df, clinical_df, plot_path=plot_path, cox_results=cox_results)
-    else:
-        print("Comparing pathways...")
-        clustered_mutation_df = pd.read_csv("processed/MutationClustered.csv")
-        important_pathways, enriched_pathways = compare_pathways(clustered_mutation_df, pd.read_csv(cox_results)['covariate'].to_list())
 
-        pathway_B, pathway_A = important_pathways
+    print("Comparing pathways...")
+    clustered_mutation_df = pd.read_csv("processed/MutationClustered.csv")
+    important_pathways, enriched_pathways = compare_pathways(clustered_mutation_df, pd.read_csv(cox_results)['covariate'].to_list())
 
-        pathway_A_genes = enriched_pathways[0].query(f"Term == '{pathway_A}'")['Genes'].item().split(";")
-        pathway_B_genes_0 = enriched_pathways[0].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
-        pathway_B_genes_2 = enriched_pathways[2].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
-        pathway_B_genes = list(set(pathway_B_genes_0 + pathway_B_genes_2))
+    pathway_B, pathway_A = important_pathways
 
-        os.makedirs("results/pathways/pathway_A", exist_ok=True)
-        os.makedirs("results/pathways/pathway_B", exist_ok=True)
-        pkl.dump(pathway_A_genes, open("results/pathways/pathway_A/pathway_A_genes.pkl", "wb"))
-        pkl.dump(pathway_B_genes, open("results/pathways/pathway_B/pathway_B_genes.pkl", "wb"))
+    pathway_A_genes = enriched_pathways[0].query(f"Term == '{pathway_A}'")['Genes'].item().split(";")
+    pathway_B_genes_0 = enriched_pathways[0].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
+    pathway_B_genes_2 = enriched_pathways[2].query(f"Term == '{pathway_B}'")['Genes'].item().split(";")
+    pathway_B_genes = list(set(pathway_B_genes_0 + pathway_B_genes_2))
 
-        analyze_pathway_a_b(clinical_df, pathway_A, pathway_B)
+    os.makedirs("results/genes/mutation/pathways/pathway_A", exist_ok=True)
+    os.makedirs("results/genes/mutation/pathways/pathway_B", exist_ok=True)
+    pkl.dump(pathway_A_genes, open("results/genes/mutation/pathways/pathway_A/pathway_A_genes.pkl", "wb"))
+    pkl.dump(pathway_B_genes, open("results/genes/mutation/pathways/pathway_B/pathway_B_genes.pkl", "wb"))
+
+    analyze_pathway_a_b(clinical_df, pathway_A, pathway_B)
 
 def get_important_genes_from_pathway_B(mutation_df, clinical_df):
     import warnings
@@ -111,7 +112,7 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
     mutation_df['status'] = mutation_df['status'].astype(int)
     mutation_df = mutation_df.drop(columns=['patient_id'])
 
-    pathway_B_genes = pkl.load(open("results/pathways/pathway_B/pathway_B_genes.pkl", "rb"))
+    pathway_B_genes = pkl.load(open("results/genes/mutation/pathways/pathway_B/pathway_B_genes.pkl", "rb"))
 
     no_pten_verification = check_pten(mutation_df, pathway_B_genes)
     if no_pten_verification:
@@ -119,7 +120,7 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
         print("Finding top genes in Pathway B...")
 
         top_genes = find_top_genes(mutation_df, pathway_B_genes)
-        save_path = "results/pathways/pathway_B/pathways_B_genes.csv"
+        save_path = "results/genes/mutation/pathways/pathway_B/pathways_B_genes.csv"
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
         top_genes_df = pd.DataFrame(top_genes, columns=['Top Genes'])

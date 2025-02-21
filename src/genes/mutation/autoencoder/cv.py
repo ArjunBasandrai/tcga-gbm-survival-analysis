@@ -27,7 +27,7 @@ def k_fold_autoencoder_training(
     random_state=42,
     print_logs=False,
     print_training_graph=True,
-    training_graph_path="results/ae_training_graph",
+    training_graph_path="results/genes/mutation/ae_training_graph",
 ):
 
     kfold = KFold(n_splits=n_splits, shuffle=shuffle_dataset, random_state=random_state)

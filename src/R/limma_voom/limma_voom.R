@@ -31,7 +31,7 @@ fit <- eBayes(fit)
 results <- topTable(fit, coef=1, adjust="fdr", number=Inf)
 results$Gene <- rownames(results)
 
-output_file <- "../../../results/limma_voom/limma_voom_results.csv"
+output_file <- "../../../results/genes/mutation/limma_voom/limma_voom_results.csv"
 write.csv(results, file=output_file, row.names=FALSE)
 
 print("Differential Expression Analysis Completed. Results saved to limma_voom_results.csv")

@@ -38,7 +38,7 @@ def check_pten(mutation_df, pathway_B_genes):
     kmf_pten_non_mutated.fit(pten_non_mutated["overall_survival"], pten_non_mutated["status"], label="PTEN Non-Mutated")
     kmf_pten_non_mutated.plot_survival_function()
     
-    save_path = "results/pathways/pten/pten_analysis.png"
+    save_path = "results/genes/mutation/pathways/pten/pten_analysis.png"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     plt.title("Kaplan-Meier Survival Curves")
@@ -137,7 +137,7 @@ def find_top_genes(mutation_df, pathway_B_genes):
                             cox_data['status'])
     print(f"C-index: {c_index:.4f}")
 
-    cph.summary.query("p < 0.05")['exp(coef)'].reset_index().rename({"covariate": "genes", "exp(coef)": "HR"}).to_csv("results/pathways/top_genes.csv", index=False)
+    cph.summary.query("p < 0.05")['exp(coef)'].reset_index().rename({"covariate": "genes", "exp(coef)": "HR"}).to_csv("results/genes/mutation/pathways/top_genes.csv", index=False)
 
     with open('models/cox_model.pkl', 'wb') as f:
         pkl.dump(cph, f)

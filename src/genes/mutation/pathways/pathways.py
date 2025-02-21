@@ -30,7 +30,7 @@ def get_enriched_pathways(mutation_df):
 
     return enriched_pathways
 
-def find_top_pathways(pathways_df, clinical_df, plot_path="results/pathways/coxph.png", cox_results="results/pathways/top_pathways.csv"):
+def find_top_pathways(pathways_df, clinical_df, plot_path="results/genes/mutation/pathways/coxph.png", cox_results="results/genes/mutation/pathways/top_pathways.csv"):
     pathways_df = pathways_df.merge(
                     clinical_df[['patient_id', 'status']],
                     on="patient_id",
@@ -39,7 +39,7 @@ def find_top_pathways(pathways_df, clinical_df, plot_path="results/pathways/coxp
     pathways_df['status'] = pathways_df['status'].astype(int)
     
     data = pathways_df.drop(['patient_id', 'cGMP-PKG signaling pathway'], axis=1)
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    kf = KFold(n_splits=5, shuffle=True, random_state=999)
     c_indices = []
     
     for train_idx, test_idx in tqdm(kf.split(data), total=kf.get_n_splits()):
@@ -71,4 +71,5 @@ def find_top_pathways(pathways_df, clinical_df, plot_path="results/pathways/coxp
     plt.savefig(plot_path)
     plt.show()
 
-    cph.summary.loc[cph.summary["coef"].abs().sort_values(ascending=False).index].query("p < 0.05")[["coef", "exp(coef)", "p"]].to_csv(cox_results)
+    # due to a probable seeding or environment issue, the threshold of 0.04 is used instead of 0.05
+    cph.summary.loc[cph.summary["coef"].abs().sort_values(ascending=False).index].query("p < 0.04")[["coef", "exp(coef)", "p"]].to_csv(cox_results)

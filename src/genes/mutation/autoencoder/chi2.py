@@ -9,7 +9,7 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from ..config import Conf
+from ....config import Conf
 
 def _get_latent_mutation_df(clinical_df):
     latent_mutation_df = pd.read_csv("processed/EncodedMutation.csv")

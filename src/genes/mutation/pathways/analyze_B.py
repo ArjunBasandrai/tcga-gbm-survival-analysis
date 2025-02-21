@@ -139,7 +139,7 @@ def find_top_genes(mutation_df, pathway_B_genes):
 
     cph.summary.query("p < 0.05")['exp(coef)'].reset_index().rename({"covariate": "genes", "exp(coef)": "HR"}).to_csv("results/genes/mutation/pathways/top_genes.csv", index=False)
 
-    with open('models/cox_model.pkl', 'wb') as f:
+    with open('models/mutation_cox_model.pkl', 'wb') as f:
         pkl.dump(cph, f)
 
     return top_genes

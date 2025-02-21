@@ -74,7 +74,7 @@ def enrich_pathways(clinical_df, mutation_df):
             how="inner"
         )
         pathways_df.to_csv("processed/Pathways.csv")
-        
+
     if os.path.exists("results/genes/mutation/pathways/top_pathways.csv") is False:
         print("Finding top pathways...")
         plot_path = "results/genes/mutation/pathways/coxph.png"
@@ -129,11 +129,14 @@ def get_important_genes_from_pathway_B(mutation_df, clinical_df):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Autoencoder")
     parser.add_argument("--clinical", action="store_true", help="Run Clinical Autoencoder")
+
+    # gene mutation analysis
     parser.add_argument("--mutation", action="store_true", help="Run Mutation Autoencoder")
     parser.add_argument("--chi2", action="store_true", help="Run Chi2 Test")
     parser.add_argument("--pathways", action="store_true", help="Get enriched pathways")
     parser.add_argument("--pathways_genes", action="store_true", help="Get important genes from pathway B")
     parser.add_argument("--predict", action="store_true", help="Predict patient survival")
+    
     args = parser.parse_args()
 
     if args.predict:

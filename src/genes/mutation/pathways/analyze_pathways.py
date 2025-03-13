@@ -127,10 +127,6 @@ def km_analysis(pathways_df, pathway_A, pathway_B):
     return log_rank_results
 
 def analyze_pathway_a_b(clinical_df, pathway_A, pathway_B):
-    kmf_A = KaplanMeierFitter()
-    kmf_B = KaplanMeierFitter()
-    kmf_A_B = KaplanMeierFitter()
-
     pathways_df = pd.read_csv("processed/Pathways.csv").drop(
                         ['Unnamed: 0'], axis=1
                     ).merge(

@@ -9,7 +9,7 @@ def install_R_packages():
     except subprocess.CalledProcessError as e:
         print(f"Error installing R packages: {e}")
 
-def perform_dge_analysis():
+def perform_dge_go_analysis():
     r_script = "src/R/limma_voom/limma_voom.R"
     input_csv = "processed/GeneExpressionData.csv"
     output_dir = "results/genes/expression/feature_selection/limma_voom/"

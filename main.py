@@ -21,7 +21,8 @@ from src.genes.mutation.pathways.analyze_B import check_pten, find_top_genes
 
 from src.genes.mutation.inference.cox_pathway_b import predict_patient_survival
 
-from src.genes.expression.dge import install_R_packages, perform_dge_analysis
+from src.genes.expression.dge import install_R_packages, perform_dge_go_analysis
+from src.genes.expression.gsva import run_gsva
 
 from src.config import Conf
 
@@ -145,6 +146,7 @@ if __name__ == "__main__":
     parser.add_argument("--preprocess", action="store_true", help="Preprocess gene expression data")
     parser.add_argument("--install-r-packages", action="store_true", help="Install required R packages")
     parser.add_argument("--dge", action="store_true", help="Run Differential Gene Expression Analysis")
+    parser.add_argument("--gsva", action="store_true", help="Run Gene Set Variation Analysis")
     parser.add_argument("--full-expression-expression", action="store_true", help="Run the full gene expression analysis")
     
     args = parser.parse_args()
@@ -154,7 +156,7 @@ if __name__ == "__main__":
         exit(0)
     
     is_gene_mutation_analysis = args.mutation or args.chi2 or args.pathways or args.pathways_genes or args.full_mutation
-    is_gene_expression_analysis = args.preprocess or args.dge or args.install_r_packages or args.full_expression_expression
+    is_gene_expression_analysis = args.preprocess or args.dge or args.install_r_packages or args.gsva or args.full_expression_expression
 
     patients_to_remove = ['TCGA.DU.6392', 'TCGA.HT.8564']
     clinical_df, encoder = load_clinical_data("data/Clinical.csv")
@@ -164,7 +166,7 @@ if __name__ == "__main__":
     if is_gene_expression_analysis:
         rna_df = load_rna_data("data/RNASeq2.csv")
         rna_df = rna_df[~rna_df.patient_id.isin(patients_to_remove)]
-
+    
     if is_gene_mutation_analysis:
         mutation_df = load_mutation_data("data/Mutation.csv")
         mutation_df = mutation_df[~mutation_df.patient_id.isin(patients_to_remove)]
@@ -200,4 +202,7 @@ if __name__ == "__main__":
         install_R_packages()
 
     if args.dge or args.full_expression_expression:
-        perform_dge_analysis()
+        perform_dge_go_analysis()
+    
+    if args.gsva or args.full_expression_expression:
+        run_gsva(clinical_df, rna_df, "results/genes/expression/feature_selection/genetic_ontology_enrichment/GO_High_vs_Low.csv")
